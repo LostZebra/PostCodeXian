@@ -28,6 +28,8 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using Windows.Storage;
+// Xml parser
+using System.Xml.Linq;
 
 // The Pivot Application template is documented at http://go.microsoft.com/fwlink/?LinkID=391641
 
@@ -37,7 +39,7 @@ namespace PostCodeXian
     public sealed partial class PivotPage : Page
     {
         private const string DistrictDataSetName = "DistrictDataSet";
-        private const string ScreenWidthName = "ScreenWidth";
+        private const string ProgressBarWidthName = "ProgressBarWidth";
         private const string SearchedResultsName = "SearchedResultsGroup";
         private const Visibility visible = Visibility.Visible;
         private const Visibility collapsed = Visibility.Collapsed;
@@ -49,6 +51,7 @@ namespace PostCodeXian
         private readonly ResourceLoader resourceLoader = ResourceLoader.GetForCurrentView("Resources");
 
         private bool isDonwloading = false;
+        private bool isUpdateChecked = false;
 
         // Black and white brush
         private SolidColorBrush whiteBrush = new SolidColorBrush(Colors.White);
@@ -70,6 +73,10 @@ namespace PostCodeXian
             this.searchedResultsListView.ItemClick += this.searchBox_LostFocus;
             this.searchBox.KeyDown += this.enterKeyDown_handler;
 
+            // Modify download title layout
+            double width = Window.Current.Bounds.Width;
+            this.defaultViewModel[ProgressBarWidthName] = width - 50;
+
             // Behaviours when selected pivot item changes
             this.pivot.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e)
             {
@@ -81,10 +88,6 @@ namespace PostCodeXian
                     }
                 }
             };
-
-            // Modify download title layout
-            double width = Window.Current.Bounds.Width;
-            this.downloadProgressBar.Width = width - 50;
         }
 
         /// <summary>
@@ -121,13 +124,46 @@ namespace PostCodeXian
             DistrictDataSource dataSource = DistrictDataSource.GetInstance();
             await dataSource.GetDistrictData();
             this.defaultViewModel[DistrictDataSetName] = dataSource;
-            // Test code
-            // Change progress bar value delegate
-            if (!isDonwloading)
+
+            // Async check update
+            if (!isUpdateChecked)
             {
-                isDonwloading = true;
-                ChangeProgress changeProgressBarValue = new ChangeProgress(changeProgress);
-                await CommonTaskClient.Download(changeProgressBarValue);
+                isUpdateChecked = true;
+                bool isCheckUpdateSucceed = true;
+                this.defaultViewModel["UpdateStatus"] = "正在检查更新...";
+                try
+                {
+                    bool isUpdateAvailable = await CommonTaskClient.IsUpdateAvailable();
+                    await Task.Delay(500);
+                    if (isUpdateAvailable)
+                    {
+                        this.defaultViewModel["UpdateStatus"] = "邮编数据库有新版本";
+                        MessageDialog updateAvalible = new MessageDialog("有可用的邮编数据库更新，要下载吗？", "提示");
+                        updateAvalible.Commands.Add(new UICommand("开始下载", new UICommandInvokedHandler(updateDialogCommanHander), 0));
+                        updateAvalible.Commands.Add(new UICommand("以后再说", null, 1));
+                        updateAvalible.DefaultCommandIndex = 0;
+                        updateAvalible.CancelCommandIndex = 1;
+                        await updateAvalible.ShowAsync();
+                    }
+                    else
+                    {
+                        this.defaultViewModel["UpdateStatus"] = "无可用更新";
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    isCheckUpdateSucceed = false;
+                }
+                catch (WebException)
+                {
+                    isCheckUpdateSucceed = false;
+                }
+                if (!isCheckUpdateSucceed)
+                {
+                    this.defaultViewModel["UpdateStatus"] = "获取更新失败";
+                }
+                await Task.Delay(500);
+                this.defaultViewModel["UpdateStatus"] = "";
             }
         }
 
@@ -166,21 +202,21 @@ namespace PostCodeXian
             if (ApplicationData.Current.LocalSettings.Values["AccessGeo"] == null)
             {
                 MessageDialog accessingGeoLocator = new MessageDialog("请求访问地理信息数据", "提示");
-                accessingGeoLocator.Commands.Add(new UICommand("允许", new UICommandInvokedHandler(messageDialogCommandHandler), 0));
-                accessingGeoLocator.Commands.Add(new UICommand("不允许", new UICommandInvokedHandler(messageDialogCommandHandler), 0));
+                accessingGeoLocator.Commands.Add(new UICommand("允许", new UICommandInvokedHandler(geoDialogCommandHandler), 0));
+                accessingGeoLocator.Commands.Add(new UICommand("不允许", new UICommandInvokedHandler(geoDialogCommandHandler), 0));
                 accessingGeoLocator.DefaultCommandIndex = 0;
                 accessingGeoLocator.CancelCommandIndex = 1;
-                var selectedResult = await accessingGeoLocator.ShowAsync();
+                await accessingGeoLocator.ShowAsync();
                 
             }
             else if (ApplicationData.Current.LocalSettings.Values["AccessGeo"].Equals(false))
             {
                 MessageDialog refuseAccessGeoLocator = new MessageDialog("访问地理位置信息被拒绝", "提示");
                 refuseAccessGeoLocator.Commands.Add(new UICommand("放弃", null, 0));
-                refuseAccessGeoLocator.Commands.Add(new UICommand("给予权限", new UICommandInvokedHandler(messageDialogCommandHandler), 1));
+                refuseAccessGeoLocator.Commands.Add(new UICommand("给予权限", new UICommandInvokedHandler(geoDialogCommandHandler), 1));
                 refuseAccessGeoLocator.DefaultCommandIndex = 0;
                 refuseAccessGeoLocator.CancelCommandIndex = 1;
-                var selectedResult = await refuseAccessGeoLocator.ShowAsync();
+                await refuseAccessGeoLocator.ShowAsync();
             }
             else
             {
@@ -192,7 +228,8 @@ namespace PostCodeXian
             }
         }
 
-        private async void messageDialogCommandHandler(IUICommand commandResult)
+        // Handle MessageDialog events
+        private async void geoDialogCommandHandler(IUICommand commandResult)
         {
             if (commandResult.Label.Equals("允许") || commandResult.Label.Equals("给予权限"))
             {
@@ -207,6 +244,19 @@ namespace PostCodeXian
             {
                 ApplicationData.Current.LocalSettings.Values["AccessGeo"] = false;
                 gettingStreetFinished(false);      
+            }
+        }
+
+        private async void updateDialogCommanHander(IUICommand commandResult)
+        {
+            if (commandResult.Label.Equals("开始下载"))
+            {
+                this.defaultViewModel["UpdateStatus"] = "开始下载...";
+                ChangeProgress updateProgress = new ChangeProgress(changeProgress);
+                await CommonTaskClient.Download(updateProgress);
+                await Task.Delay(1000);
+                this.defaultViewModel["UpdateStatus"] = "下载完成";            
+                this.defaultViewModel["UpdateStatus"] = "";
             }
         }
 

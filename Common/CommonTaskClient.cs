@@ -12,11 +12,19 @@ using Windows.Storage.Streams;
 using Windows.Foundation;
 // For debugging
 using System.Diagnostics;
+// NET & Data
+using Windows.Data.Json;
+using System.Xml;
+using System.Xml.Linq;
+using System.Net.Http;
+using System.IO;
 
 namespace PostCodeXian
 {
     static class CommonTaskClient
     {
+        private static double fileSize = 0.0;
+
         public static async void SendFeedBack()
         {
             EmailMessage em = new EmailMessage();
@@ -27,35 +35,71 @@ namespace PostCodeXian
 
         public static string[] AboutInfo()
         {
-            return new[] { "西安邮政编码查询", "版本：1.0.0\n开发者：肖勇"};
+            return new[] { "西安邮政编码查询", "版本：1.0.0.0\n开发者：肖勇\n邮编数据库版本：1.0"};
         }
 
         public static async Task Download(ChangeProgress change)
         {
-            // Test code
-            // Here fill the logic of download
             ulong currentSize = 0;
-            StorageFile fromFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Common/ReadMe.txt"));
-            var fromFileProperties = await fromFile.GetBasicPropertiesAsync();
-            var fromFileSize = fromFileProperties.Size;
+            // Replace existed file
+            string fileName = "info.txt";
+            var newLibraryFile = await ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
 
-            // byte[] buffer = new byte[1024];
-            string fileName = "ReadMe.txt";
-            Debug.WriteLine(ApplicationData.Current.LocalFolder.Path);
-            var newFile = await ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
-
-            using (IInputStream inputStream = await fromFile.OpenSequentialReadAsync())
+            Uri downloadUri = new Uri("http://localhost:62874/MainService.svc/DownloadNewLibrary");
+            using (HttpClient downloadClient = new HttpClient())
             {
-                IBuffer buffer = new Windows.Storage.Streams.Buffer(100);
-                for (buffer = await inputStream.ReadAsync(buffer, 100, InputStreamOptions.ReadAhead); buffer.Length > 0;
-                    buffer = await inputStream.ReadAsync(buffer, 100, InputStreamOptions.ReadAhead))
+                HttpResponseMessage responseMessage = await downloadClient.GetAsync(downloadUri);
+                responseMessage.EnsureSuccessStatusCode();
+                
+                byte[] buffer = new byte[100];  // Buffer
+                using (var downloaded = await responseMessage.Content.ReadAsStreamAsync())
                 {
-                    await Task.Delay(100);
-                    currentSize += (ulong)buffer.Length;
-                    await FileIO.WriteBufferAsync(newFile, buffer);
-                    change((int)(currentSize * 100 / fromFileSize));
+                    var readBytes = downloaded.Read(buffer, 0, buffer.Length);
+                    while(readBytes > 0)
+                    {
+                        await Task.Delay(100);  // Simulated time delay
+                        currentSize += (ulong)readBytes;
+                        await FileIO.WriteBytesAsync(newLibraryFile, buffer);
+                        change((int)(currentSize * 100 / fileSize));
+                        readBytes = downloaded.Read(buffer, 0, buffer.Length);
+                    }
                 }
+            }     
+        }
+
+        public static async Task<bool> IsUpdateAvailable()
+        {
+            Uri clientUri = new Uri("http://localhost:62874/MainService.svc/FileDescription");
+            using (HttpClient client = new HttpClient())
+            {
+                HttpResponseMessage responseMessage = await client.GetAsync(clientUri);
+                responseMessage.EnsureSuccessStatusCode();
+                JsonObject fileDesJson = JsonObject.Parse(await responseMessage.Content.ReadAsStringAsync());
+                // Get file description successful
+                if (fileDesJson["Status"].GetString().Equals("OK"))
+                {
+                    if (HasNewerVersion(fileDesJson["FileVersion"].GetString()))
+                    {
+                        fileSize = fileDesJson["FileSize"].GetNumber();
+                        return true;
+                    }
+                }
+                return false;
+            }    
+        }
+
+        private static bool HasNewerVersion(string newVersion)
+        {
+            string currentVersion = AboutInfo()[1].Substring(26, 3);
+            string[] currentVersionDigits = currentVersion.Split('.');
+            string[] futureVersionDigits = newVersion.Split('.');
+
+            for (int i = 0; i < futureVersionDigits.Length; i++)
+            {
+                if (currentVersionDigits[i].CompareTo(futureVersionDigits[i]) < 0)
+                    return true;
             }
+            return false;
         }
     }
 }

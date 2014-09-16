@@ -15,6 +15,8 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+// For debugging
+using System.Diagnostics;
 
 // The Basic Page item template is documented at http://go.microsoft.com/fwlink/?LinkID=390556
 
@@ -72,8 +74,8 @@ namespace PostCodeXian
         {
             // About message
             string[] aboutInfo = CommonTaskClient.AboutInfo();
-            this.defaultViewModel["AppTitle"] = aboutInfo[0];
-            this.defaultViewModel["DetailInfo"] = aboutInfo[1]; 
+            this.DefaultViewModel["AppTitle"] = aboutInfo[0];
+            this.DefaultViewModel["DetailInfo"] = aboutInfo[1]; 
         }
 
         /// <summary>

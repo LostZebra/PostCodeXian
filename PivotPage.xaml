@@ -115,14 +115,15 @@
         </Pivot>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" Width="Auto">
-            <ProgressBar x:Name="downloadProgressBar" VerticalAlignment="Top" Height="5" Maximum="100"/>
-            <TextBlock x:Name="downloadProgress" Text="{Binding Path=Value, ElementName=downloadProgressBar}" FontSize="15" TextAlignment="Center" Margin="10,0,0,0" Width="40"/>
+            <ProgressBar x:Name="downloadProgressBar" VerticalAlignment="Top" Height="5" Width="{Binding ProgressBarWidth, Mode=OneTime}" Maximum="100" Visibility="Collapsed"/>
+            <TextBlock x:Name="downloadProgress" Text="{Binding Path=Value, ElementName=downloadProgressBar}" FontSize="15" TextAlignment="Center" Margin="10,0,0,0" Width="40" Visibility="Collapsed"/>
         </StackPanel>
+        
+        <TextBlock Text="{Binding UpdateStatus}" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Margin="5,0,5,0" Width="Auto" TextAlignment="Center" FontSize="20"/>
     </Grid>
 
     <!--Bottom bar-->
-    <Page.BottomAppBar>
-        
+    <Page.BottomAppBar>       
         <CommandBar>
             <AppBarButton x:Name="SendFeedBack" Icon="Mail" Label="反馈" Click="FeedbackButton_Click"/>
             <AppBarButton x:Name="About" Icon="Home" Label="关于" Click="About_Click"/>

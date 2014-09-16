@@ -8,7 +8,6 @@
     mc:Ignorable="d"
     DataContext="{Binding DefaultViewModel, RelativeSource={RelativeSource Self}}"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-
     <Grid x:Name="LayoutRoot">
 
         <Grid.ChildrenTransitions>
@@ -29,8 +28,8 @@
 
         <!--TODO: Content should be placed within the following grid-->
         <StackPanel Grid.Row="1" Margin="19,9.5,19,0">
-            <TextBlock x:Name="appTitleBlock" HorizontalAlignment="Left" FontSize="25" Text="{Binding AppTitle}"/>
-            <TextBlock x:Name="detailInfo" HorizontalAlignment="Left" Margin="0,5,0,0" Text="{Binding DetailInfo}" FontSize="20" LineHeight="15"/>
+            <TextBlock x:Name="appTitle" HorizontalAlignment="Left" FontSize="25" Text="{Binding AppTitle, Mode=OneTime}"/>
+            <TextBlock x:Name="detailInfo" HorizontalAlignment="Left" Margin="0,5,0,0" Text="{Binding DetailInfo, Mode=OneTime}" FontSize="20" LineHeight="15"/>
             <Button x:Name="FeedBackButton" HorizontalAlignment="Left" Content="发送反馈" Margin="0,20,0,0" Click="FeedBackButton_Click"/>
         </StackPanel>
     </Grid>
