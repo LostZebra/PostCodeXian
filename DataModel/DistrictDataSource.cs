@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.Data.Json;
 using Windows.Storage;
+// For debugging
+using System.Diagnostics;
 
 namespace PostCodeXian.Data
 {
@@ -59,10 +61,17 @@ namespace PostCodeXian.Data
             {
                 return;
             }
+            // Testing
+            StorageFolder folder = Windows.Storage.ApplicationData.Current.LocalFolder;
+            var file = await folder.GetFileAsync("DistrictData.json");
+            string districtJsonText = await FileIO.ReadTextAsync(file);
+            JsonObject districtJsonObject = JsonObject.Parse(districtJsonText);
+            /*
             Uri districtDataUri = new Uri("ms-appx:///DataModel/DistrictData.json");
             StorageFile districtDataFile = await StorageFile.GetFileFromApplicationUriAsync(districtDataUri);
             string districtJsonText = await FileIO.ReadTextAsync(districtDataFile);
             JsonObject districtJsonObject = JsonObject.Parse(districtJsonText);
+            */
             // New DistrictData object
             foreach (var districtName in districtJsonObject.Keys)
             {

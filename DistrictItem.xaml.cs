@@ -93,7 +93,6 @@ namespace PostCodeXian
         private void NavigationHelper_SaveState(object sender, SaveStateEventArgs e)
         {
             // TODO: Save the unique state of the page here.
-            Debug.WriteLine("Saved_State");
         }
 
         #region NavigationHelper registration

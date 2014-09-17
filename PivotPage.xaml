@@ -20,7 +20,34 @@
     </Page.Transitions>
 
     <Grid>
-            
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="CommonStates">
+                <VisualStateGroup.Transitions>
+                    <VisualTransition To="TextBlockOpacityIncrease"/>
+                    <VisualTransition To="TextBlockOpacityReverse"/>
+                </VisualStateGroup.Transitions>
+                <VisualState x:Name="TextBlockOpacityIncrease">
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="updateStatus"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="0"
+                                         To="1"
+                                         Duration="0:0:2"
+                                         />
+                    </Storyboard>
+                </VisualState>
+                <VisualState x:Name="TextBlockOpacityReverse">
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="updateStatus"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="1.0"
+                                         To="0.0"
+                                         Duration="0:0:2"/>
+                    </Storyboard>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
         <Pivot x:Uid="Pivot" Title="西安邮政编码查询" x:Name="pivot" CommonNavigationTransitionInfo.IsStaggerElement="True" Loaded="pivot_Loaded">
             <!--Pivot item one-->
             <PivotItem
@@ -118,8 +145,21 @@
             <ProgressBar x:Name="downloadProgressBar" VerticalAlignment="Top" Height="5" Width="{Binding ProgressBarWidth, Mode=OneTime}" Maximum="100" Visibility="Collapsed"/>
             <TextBlock x:Name="downloadProgress" Text="{Binding Path=Value, ElementName=downloadProgressBar}" FontSize="15" TextAlignment="Center" Margin="10,0,0,0" Width="40" Visibility="Collapsed"/>
         </StackPanel>
-        
-        <TextBlock Text="{Binding UpdateStatus}" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Margin="5,0,5,0" Width="Auto" TextAlignment="Center" FontSize="20"/>
+
+        <TextBlock x:Name="updateStatus" Text="{Binding UpdateStatus}" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Margin="5,0,5,0" Width="Auto" Height="25" TextAlignment="Center" FontSize="20">
+            <TextBlock.Resources>
+                <Storyboard x:Name="textChangedStoryBoard">
+                    <DoubleAnimation
+                        Storyboard.TargetName="updateStatus"
+                        Storyboard.TargetProperty="Opacity"
+                        Duration="0:0:10"
+                        From="1.0"
+                        To="0.0"
+                        AutoReverse="True">
+                    </DoubleAnimation>
+                </Storyboard>
+            </TextBlock.Resources>
+        </TextBlock>
     </Grid>
 
     <!--Bottom bar-->

@@ -23,8 +23,6 @@ namespace PostCodeXian
 {
     static class CommonTaskClient
     {
-        private static double fileSize = 0.0;
-
         public static async void SendFeedBack()
         {
             EmailMessage em = new EmailMessage();
@@ -35,36 +33,60 @@ namespace PostCodeXian
 
         public static string[] AboutInfo()
         {
-            return new[] { "西安邮政编码查询", "版本：1.0.0.0\n开发者：肖勇\n邮编数据库版本：1.0"};
+            string version = ApplicationData.Current.LocalSettings.Values["DataFileVersion"].ToString();
+            return new[] { "西安邮政编码查询", "版本：1.0.0.0\n开发者：肖勇\n邮编数据库版本：" + version};
         }
 
         public static async Task Download(ChangeProgress change)
         {
             ulong currentSize = 0;
             // Replace existed file
-            string fileName = "info.txt";
+            string fileName = "DistrictData.json";
             var newLibraryFile = await ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
-
             Uri downloadUri = new Uri("http://localhost:62874/MainService.svc/DownloadNewLibrary");
             using (HttpClient downloadClient = new HttpClient())
             {
                 HttpResponseMessage responseMessage = await downloadClient.GetAsync(downloadUri);
                 responseMessage.EnsureSuccessStatusCode();
-                
+
+                string tempStr = String.Empty;
                 byte[] buffer = new byte[100];  // Buffer
                 using (var downloaded = await responseMessage.Content.ReadAsStreamAsync())
                 {
+                    int totalBytes = (int)downloaded.Length;
                     var readBytes = downloaded.Read(buffer, 0, buffer.Length);
                     while(readBytes > 0)
                     {
-                        await Task.Delay(100);  // Simulated time delay
+                        await Task.Delay(200);  // Simulated time delay
+                        tempStr += Encoding.UTF8.GetString(buffer, 0, readBytes);
                         currentSize += (ulong)readBytes;
-                        await FileIO.WriteBytesAsync(newLibraryFile, buffer);
-                        change((int)(currentSize * 100 / fileSize));
-                        readBytes = downloaded.Read(buffer, 0, buffer.Length);
+                        change((int)((int)currentSize * 100 / totalBytes));
+                        readBytes = downloaded.Read(buffer, 0, (int)readBytes);
                     }
+                    await FileIO.WriteTextAsync(newLibraryFile, tempStr);
+                    downloaded.Flush();
                 }
             }     
+        }
+
+        public static async Task CheckFile()
+        {
+            Uri clientUri = new Uri("http://localhost:62874/MainService.svc/FileDescription");
+            using (HttpClient client = new HttpClient())
+            {
+                HttpResponseMessage responseMessage = await client.GetAsync(clientUri);
+                responseMessage.EnsureSuccessStatusCode();
+                JsonObject fileDesJson = JsonObject.Parse(await responseMessage.Content.ReadAsStringAsync());
+                // Get file description successful
+                if (fileDesJson["Status"].GetString().Equals("OK"))
+                {
+                    if (ApplicationData.Current.LocalSettings.Values["DataFileVersion"] == null)
+                    {
+                        // Update file version
+                        ApplicationData.Current.LocalSettings.Values["DataFileVersion"] = fileDesJson["FileVersion"].GetString();
+                    }
+                }
+            }    
         }
 
         public static async Task<bool> IsUpdateAvailable()
@@ -80,7 +102,6 @@ namespace PostCodeXian
                 {
                     if (HasNewerVersion(fileDesJson["FileVersion"].GetString()))
                     {
-                        fileSize = fileDesJson["FileSize"].GetNumber();
                         return true;
                     }
                 }
@@ -90,7 +111,11 @@ namespace PostCodeXian
 
         private static bool HasNewerVersion(string newVersion)
         {
-            string currentVersion = AboutInfo()[1].Substring(26, 3);
+            string currentVersion = (string)ApplicationData.Current.LocalSettings.Values["DataFileVersion"];
+            if (currentVersion == null)
+            {
+                return true;
+            }
             string[] currentVersionDigits = currentVersion.Split('.');
             string[] futureVersionDigits = newVersion.Split('.');
 

@@ -22,9 +22,11 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Documents;
 // For debugging
 using System.Diagnostics;
-// Network
+// Net & Data
+using Windows.Data.Json;
 using System.Net;
 using System.Net.Http;
 using Windows.Storage;
@@ -38,6 +40,7 @@ namespace PostCodeXian
     delegate void ChangeProgress(int i);
     public sealed partial class PivotPage : Page
     {
+        private static Dictionary<string, object> state = new Dictionary<string, object>();
         private const string DistrictDataSetName = "DistrictDataSet";
         private const string ProgressBarWidthName = "ProgressBarWidth";
         private const string SearchedResultsName = "SearchedResultsGroup";
@@ -50,7 +53,7 @@ namespace PostCodeXian
         private readonly ObservableDictionary defaultViewModel = new ObservableDictionary();
         private readonly ResourceLoader resourceLoader = ResourceLoader.GetForCurrentView("Resources");
 
-        private bool isDonwloading = false;
+        private bool isDownloading = false;
         private bool isUpdateChecked = false;
 
         // Black and white brush
@@ -62,8 +65,6 @@ namespace PostCodeXian
         public PivotPage()
         {
             this.InitializeComponent();
-
-            this.NavigationCacheMode = NavigationCacheMode.Required;
 
             this.navigationHelper = new NavigationHelper(this);
             this.navigationHelper.LoadState += this.NavigationHelper_LoadState;
@@ -88,6 +89,8 @@ namespace PostCodeXian
                     }
                 }
             };
+
+            Application.Current.Suspending += Current_Suspending; 
         }
 
         /// <summary>
@@ -120,24 +123,36 @@ namespace PostCodeXian
         /// session. The state will be null the first time a page is visited.</param>
         private async void NavigationHelper_LoadState(object sender, LoadStateEventArgs e)
         {
+            if (ApplicationData.Current.LocalSettings.Values["Launched"] == null)
+            {
+                ApplicationData.Current.LocalSettings.Values["Launched"] = true;
+                isUpdateChecked = true;
+                isDownloading = true;
+                showUpdateStatus("正在准备数据");
+                ChangeProgress updateProgress = new ChangeProgress(changeProgress);
+                await CommonTaskClient.CheckFile();
+                await CommonTaskClient.Download(updateProgress);
+            }
             // TODO: Create an appropriate data model for your problem domain to replace the sample data
             DistrictDataSource dataSource = DistrictDataSource.GetInstance();
             await dataSource.GetDistrictData();
             this.defaultViewModel[DistrictDataSetName] = dataSource;
-
+            
             // Async check update
+            isUpdateChecked = state.ContainsKey("IsUpdateChecked") == false ? isUpdateChecked : (bool)state["IsUpdateChecked"];
             if (!isUpdateChecked)
             {
                 isUpdateChecked = true;
                 bool isCheckUpdateSucceed = true;
-                this.defaultViewModel["UpdateStatus"] = "正在检查更新...";
+
+                showUpdateStatus("正在检查更新...");              
                 try
                 {
                     bool isUpdateAvailable = await CommonTaskClient.IsUpdateAvailable();
                     await Task.Delay(500);
                     if (isUpdateAvailable)
                     {
-                        this.defaultViewModel["UpdateStatus"] = "邮编数据库有新版本";
+                        showUpdateStatus("邮编数据库有新版本");  
                         MessageDialog updateAvalible = new MessageDialog("有可用的邮编数据库更新，要下载吗？", "提示");
                         updateAvalible.Commands.Add(new UICommand("开始下载", new UICommandInvokedHandler(updateDialogCommanHander), 0));
                         updateAvalible.Commands.Add(new UICommand("以后再说", null, 1));
@@ -147,7 +162,7 @@ namespace PostCodeXian
                     }
                     else
                     {
-                        this.defaultViewModel["UpdateStatus"] = "无可用更新";
+                        showUpdateStatus("无可用更新");
                     }
                 }
                 catch (HttpRequestException)
@@ -160,7 +175,7 @@ namespace PostCodeXian
                 }
                 if (!isCheckUpdateSucceed)
                 {
-                    this.defaultViewModel["UpdateStatus"] = "获取更新失败";
+                    showUpdateStatus("获取更新失败");
                 }
                 await Task.Delay(500);
                 this.defaultViewModel["UpdateStatus"] = "";
@@ -178,6 +193,7 @@ namespace PostCodeXian
         private void NavigationHelper_SaveState(object sender, SaveStateEventArgs e)
         {
             // TODO: Save the unique state of the page here.
+            state["IsUpdateChecked"] = isUpdateChecked;
         }
 
         /// <summary>
@@ -251,11 +267,14 @@ namespace PostCodeXian
         {
             if (commandResult.Label.Equals("开始下载"))
             {
-                this.defaultViewModel["UpdateStatus"] = "开始下载...";
+                isDownloading = true;
+                showUpdateStatus("开始下载...");
+
                 ChangeProgress updateProgress = new ChangeProgress(changeProgress);
                 await CommonTaskClient.Download(updateProgress);
+
+                showUpdateStatus("下载完成,重启应用完成更改"); 
                 await Task.Delay(1000);
-                this.defaultViewModel["UpdateStatus"] = "下载完成";            
                 this.defaultViewModel["UpdateStatus"] = "";
             }
         }
@@ -381,7 +400,7 @@ namespace PostCodeXian
 
         public void changeProgress(int i)
         {
-            if (i == 0)
+            if (this.downloadProgressBar.Visibility == collapsed && isDownloading)
             {
                 this.downloadProgressBar.Visibility = visible;
                 this.downloadProgress.Visibility = visible;
@@ -390,9 +409,16 @@ namespace PostCodeXian
             {
                 this.downloadProgressBar.Visibility = collapsed;
                 this.downloadProgress.Visibility = collapsed;
-                isDonwloading = false;  // Download completed
+                isDownloading = false;  // Download completed
             }
             this.downloadProgressBar.Value = i;
+        }
+
+        private void showUpdateStatus(string status)
+        {
+            VisualStateManager.GoToState(this, "TextBlockOpacityIncrease", true);  // Testing
+            this.defaultViewModel["UpdateStatus"] = status;
+            VisualStateManager.GoToState(this, "TextBlockOpacityReverse", true);  // Testing
         }
 
         #region NavigationHelper registration
@@ -421,6 +447,12 @@ namespace PostCodeXian
         }
 
         #endregion
+
+        private void Current_Suspending(object sender, Windows.ApplicationModel.SuspendingEventArgs e)
+        {
+            Debug.WriteLine("Suspend");
+            ApplicationData.Current.RoamingSettings.Values["IsUpdateChecked"] = isUpdateChecked;
+        }
 
         private void pivot_Loaded(object sender, RoutedEventArgs e)
         {
