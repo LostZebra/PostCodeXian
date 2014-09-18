@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Graphics.Display;
@@ -17,6 +18,8 @@ using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 // For debugging
 using System.Diagnostics;
+// Storage
+using Windows.Storage;
 
 // The Basic Page item template is documented at http://go.microsoft.com/fwlink/?LinkID=390556
 
@@ -116,11 +119,36 @@ namespace PostCodeXian
             this.navigationHelper.OnNavigatedFrom(e);
         }
 
+        private void showWeiboStatus(string status)
+        {
+            VisualStateManager.GoToState(this, "ShowWeiboStatus", true);
+            this.defaultViewModel["WeiboStatus"] = status;
+            VisualStateManager.GoToState(this, "FadeWeiboStatus", true);
+        }
+
         #endregion
 
         private void FeedBackButton_Click(object sender, RoutedEventArgs e)
         {
             CommonTaskClient.SendFeedBack();
+        }
+
+        private async void weiboIcon_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // Send weibo message
+            if (this.weiboProgressRing.IsActive)
+            {
+                this.weiboProgressRing.IsActive = false;
+                return;
+            }
+            this.weiboProgressRing.IsActive = true;
+            await Task.Delay(2000);
+            this.weiboProgressRing.IsActive = false;
+        }
+
+        private void CancelEventHandler(object sender, EventArgs e)
+        {
+            Debug.WriteLine("登陆取消");
         }
     }
 }

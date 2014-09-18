@@ -15,6 +15,34 @@
                 <EntranceThemeTransition/>
             </TransitionCollection>
         </Grid.ChildrenTransitions>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualStateGroup.Transitions>
+                    <VisualTransition To="ShowWeiboStatus"/>
+                    <VisualTransition To="FadeWeiboStatus"/>
+                </VisualStateGroup.Transitions>
+                <VisualState x:Name="ShowWeiboStatus">
+                    <Storyboard>
+                        <DoubleAnimation
+                            Storyboard.TargetName="weiboStatus"
+                            Storyboard.TargetProperty="Opacity"
+                            From="0.0"
+                            To="1.0"
+                            Duration="0:0:2"/>
+                    </Storyboard>
+                </VisualState>
+                <VisualState x:Name="FadeWeiboStatus">
+                    <Storyboard>
+                        <DoubleAnimation
+                            Storyboard.TargetName="weiboStatus"
+                            Storyboard.TargetProperty="Opacity"
+                            From="1.0"
+                            To="0.0"
+                            Duration="0:0:2"/>
+                    </Storyboard>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -27,10 +55,16 @@
         </StackPanel>
 
         <!--TODO: Content should be placed within the following grid-->
+        <TextBlock x:Name="weiboStatus" VerticalAlignment="Bottom" Width="Auto" Text="{Binding WeiboStatus}" FontSize="20" Visibility="Collapsed"/>
         <StackPanel Grid.Row="1" Margin="19,9.5,19,0">
             <TextBlock x:Name="appTitle" HorizontalAlignment="Left" FontSize="25" Text="{Binding AppTitle, Mode=OneTime}"/>
             <TextBlock x:Name="detailInfo" HorizontalAlignment="Left" Margin="0,5,0,0" Text="{Binding DetailInfo, Mode=OneTime}" FontSize="20" LineHeight="15"/>
-            <Button x:Name="FeedBackButton" HorizontalAlignment="Left" Content="发送反馈" Margin="0,20,0,0" Click="FeedBackButton_Click"/>
+            <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                <Button x:Name="feedBackButton" HorizontalAlignment="Left" VerticalAlignment="Center" Content="发送反馈" Margin="0,0,0,0" Click="FeedBackButton_Click" Background="{StaticResource PhoneAccentBrush}"/>
+                <Image x:Name="weiboIcon" Source="/Assets/friends_circle.png" VerticalAlignment="Center" Margin="60,0,0,0" Width="48" Height="48" Tapped="weiboIcon_Tapped"/>
+                <TextBlock Text="分享到朋友圈" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="15"/>
+            </StackPanel>
+            <ProgressRing x:Name="weiboProgressRing" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,40,0,0" IsActive="False"/>
         </StackPanel>
     </Grid>
 </Page>

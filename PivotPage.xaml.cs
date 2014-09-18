@@ -40,7 +40,6 @@ namespace PostCodeXian
     delegate void ChangeProgress(int i);
     public sealed partial class PivotPage : Page
     {
-        private static Dictionary<string, object> state = new Dictionary<string, object>();
         private const string DistrictDataSetName = "DistrictDataSet";
         private const string ProgressBarWidthName = "ProgressBarWidth";
         private const string SearchedResultsName = "SearchedResultsGroup";
@@ -89,8 +88,6 @@ namespace PostCodeXian
                     }
                 }
             };
-
-            Application.Current.Suspending += Current_Suspending; 
         }
 
         /// <summary>
@@ -139,7 +136,7 @@ namespace PostCodeXian
             this.defaultViewModel[DistrictDataSetName] = dataSource;
             
             // Async check update
-            isUpdateChecked = state.ContainsKey("IsUpdateChecked") == false ? isUpdateChecked : (bool)state["IsUpdateChecked"];
+            isUpdateChecked = (e.PageState == null || !e.PageState.ContainsKey("IsUpdateChecked")) ? isUpdateChecked : (bool)e.PageState["IsUpdateChecked"];
             if (!isUpdateChecked)
             {
                 isUpdateChecked = true;
@@ -193,7 +190,7 @@ namespace PostCodeXian
         private void NavigationHelper_SaveState(object sender, SaveStateEventArgs e)
         {
             // TODO: Save the unique state of the page here.
-            state["IsUpdateChecked"] = isUpdateChecked;
+            e.PageState["IsUpdateChecked"] = isUpdateChecked;
         }
 
         /// <summary>
@@ -267,14 +264,14 @@ namespace PostCodeXian
         {
             if (commandResult.Label.Equals("开始下载"))
             {
-                isDownloading = true;
                 showUpdateStatus("开始下载...");
+                isDownloading = true;
 
                 ChangeProgress updateProgress = new ChangeProgress(changeProgress);
                 await CommonTaskClient.Download(updateProgress);
 
                 showUpdateStatus("下载完成,重启应用完成更改"); 
-                await Task.Delay(1000);
+                await Task.Delay(1000);  // Simulated task delay
                 this.defaultViewModel["UpdateStatus"] = "";
             }
         }
@@ -447,12 +444,6 @@ namespace PostCodeXian
         }
 
         #endregion
-
-        private void Current_Suspending(object sender, Windows.ApplicationModel.SuspendingEventArgs e)
-        {
-            Debug.WriteLine("Suspend");
-            ApplicationData.Current.RoamingSettings.Values["IsUpdateChecked"] = isUpdateChecked;
-        }
 
         private void pivot_Loaded(object sender, RoutedEventArgs e)
         {
