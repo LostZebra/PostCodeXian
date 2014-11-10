@@ -2,8 +2,6 @@
     x:Class="PostCodeXian.DistrictItem"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:PostCodeXian"
-    xmlns:data="using:PostCodeXian.Data"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -32,13 +30,15 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="19,0,0,0">
-            <TextBlock Text="西安邮政编码查询" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,12,0,0"/>
-            <TextBlock x:Name="districtTitle" Text="{Binding DistrictName}" Style="{ThemeResource HeaderTextBlockStyle}" Margin="0,-6.5,0,26.5" CharacterSpacing="{ThemeResource PivotHeaderItemCharacterSpacing}"/>
+        <StackPanel Grid.Row="0" Margin="19,9,0,0">
+            <Grid Height="40">
+                <TextBlock Text="西安邮政编码查询" Style="{ThemeResource TitleTextBlockStyle}" VerticalAlignment="Center"/>
+            </Grid>
+            <TextBlock x:Name="DistrictTitle" Text="{Binding DistrictName}" Style="{ThemeResource HeaderTextBlockStyle}" Margin="0,-6.5,0,26.5" CharacterSpacing="{ThemeResource PivotHeaderItemCharacterSpacing}"/>
         </StackPanel>
 
         <ListView 
-            x:Name="postCodeList"
+            x:Name="PostCodeList"
             Grid.Row="1"
             IsItemClickEnabled="True"
             ItemsSource="{Binding PostCodeList}"

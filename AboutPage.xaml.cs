@@ -1,26 +1,11 @@
 ﻿using PostCodeXian.Common;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.Graphics.Display;
-using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 // For debugging
 using System.Diagnostics;
-// Storage
-using Windows.Storage;
-
 // The Basic Page item template is documented at http://go.microsoft.com/fwlink/?LinkID=390556
 
 namespace PostCodeXian
@@ -30,8 +15,8 @@ namespace PostCodeXian
     /// </summary>
     public sealed partial class AboutPage : Page
     {
-        private NavigationHelper navigationHelper;
-        private ObservableDictionary defaultViewModel = new ObservableDictionary();
+        private readonly NavigationHelper _navigationHelper;
+        private readonly ObservableDictionary _defaultViewModel = new ObservableDictionary();
 
         public string AppTitle { get; private set; }
         public string DetailInfo { get; private set; }
@@ -40,9 +25,9 @@ namespace PostCodeXian
         {
             this.InitializeComponent();
 
-            this.navigationHelper = new NavigationHelper(this);
-            this.navigationHelper.LoadState += this.NavigationHelper_LoadState;
-            this.navigationHelper.SaveState += this.NavigationHelper_SaveState;
+            _navigationHelper = new NavigationHelper(this);
+            _navigationHelper.LoadState += this.NavigationHelper_LoadState;
+            _navigationHelper.SaveState += this.NavigationHelper_SaveState;
         }
 
         /// <summary>
@@ -50,7 +35,7 @@ namespace PostCodeXian
         /// </summary>
         public NavigationHelper NavigationHelper
         {
-            get { return this.navigationHelper; }
+            get { return _navigationHelper; }
         }
 
         /// <summary>
@@ -59,7 +44,7 @@ namespace PostCodeXian
         /// </summary>
         public ObservableDictionary DefaultViewModel
         {
-            get { return this.defaultViewModel; }
+            get { return _defaultViewModel; }
         }
 
         /// <summary>
@@ -111,19 +96,12 @@ namespace PostCodeXian
         /// handlers that cannot cancel the navigation request.</param>
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
-            this.navigationHelper.OnNavigatedTo(e);
+            _navigationHelper.OnNavigatedTo(e);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            this.navigationHelper.OnNavigatedFrom(e);
-        }
-
-        private void showWeiboStatus(string status)
-        {
-            VisualStateManager.GoToState(this, "ShowWeiboStatus", true);
-            this.defaultViewModel["WeiboStatus"] = status;
-            VisualStateManager.GoToState(this, "FadeWeiboStatus", true);
+           _navigationHelper.OnNavigatedFrom(e);
         }
 
         #endregion
@@ -133,22 +111,33 @@ namespace PostCodeXian
             CommonTaskClient.SendFeedBack();
         }
 
-        private async void weiboIcon_Tapped(object sender, TappedRoutedEventArgs e)
+        private void weixinIcon_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            // Send weibo message
-            if (this.weiboProgressRing.IsActive)
-            {
-                this.weiboProgressRing.IsActive = false;
-                return;
-            }
+            /*
             this.weiboProgressRing.IsActive = true;
-            await Task.Delay(2000);
-            this.weiboProgressRing.IsActive = false;
-        }
+            
+            string appId = WXSDKData.AppId;
+            WXBaseMessage wxMessage = null;
+            int scene = SendMessageToWX.Req.WXSceneTimeline;
 
-        private void CancelEventHandler(object sender, EventArgs e)
-        {
-            Debug.WriteLine("登陆取消");
+            WXTextMessage msg = new WXTextMessage();
+            msg.Title = "文本";
+            msg.ThumbData = null;
+            msg.Text = "这是一段文本内容";
+            wxMessage = msg;
+            try
+            {
+                SendMessageToWX.Req req = new SendMessageToWX.Req(wxMessage, scene);
+                IWXAPI api = WXAPIFactory.CreateWXAPI(appId);
+                api.SendReq(req);
+            }
+            catch (WXException ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+
+            this.weiboProgressRing.IsActive = false;
+            */
         }
     }
 }

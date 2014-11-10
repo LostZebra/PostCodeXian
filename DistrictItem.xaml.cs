@@ -2,23 +2,11 @@
 using PostCodeXian.Data;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Windows.Input;
 using Windows.ApplicationModel.Resources;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.Graphics.Display;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 // For debugging
-using System.Diagnostics;
 
 // The Pivot Application template is documented at http://go.microsoft.com/fwlink/?LinkID=391641
 
@@ -27,24 +15,24 @@ namespace PostCodeXian
     /// <summary>
     /// A page that displays details for a single item within a group.
     /// </summary>
-    public sealed partial class DistrictItem : Page
+    public sealed partial class DistrictItem
     {
-        private readonly NavigationHelper navigationHelper;
-        private readonly ObservableDictionary defaultViewModel = new ObservableDictionary();
-        private readonly ResourceLoader resourceLoader = ResourceLoader.GetForCurrentView("Resources");
+        private readonly NavigationHelper _navigationHelper;
+        private readonly ObservableDictionary _defaultViewModel = new ObservableDictionary();
+        private readonly ResourceLoader _resourceLoader = ResourceLoader.GetForCurrentView(@"Resources");
 
         private const string DistrictDataName = "DistrictData";
         
         // District presented in current page
-        private District currentDistrict;
+        private District _currentDistrict;
 
         public DistrictItem()
         {
             this.InitializeComponent();
 
-            this.navigationHelper = new NavigationHelper(this);
-            this.navigationHelper.LoadState += this.NavigationHelper_LoadState;
-            this.navigationHelper.SaveState += this.NavigationHelper_SaveState;
+            this._navigationHelper = new NavigationHelper(this);
+            this._navigationHelper.LoadState += this.NavigationHelper_LoadState;
+            this._navigationHelper.SaveState += this.NavigationHelper_SaveState;
         }
 
         /// <summary>
@@ -52,7 +40,7 @@ namespace PostCodeXian
         /// </summary>
         public NavigationHelper NavigationHelper
         {
-            get { return this.navigationHelper; }
+            get { return this._navigationHelper; }
         }
 
         /// <summary>
@@ -61,7 +49,7 @@ namespace PostCodeXian
         /// </summary>
         public ObservableDictionary DefaultViewModel
         {
-            get { return this.defaultViewModel; }
+            get { return this._defaultViewModel; }
         }
 
         /// <summary>
@@ -78,8 +66,8 @@ namespace PostCodeXian
         private void NavigationHelper_LoadState(object sender, LoadStateEventArgs e)
         {
             // TODO: Create an appropriate data model for your problem domain to replace the sample data.
-            currentDistrict = (District)e.NavigationParameter;
-            this.DefaultViewModel[DistrictDataName] = currentDistrict;
+            _currentDistrict = (District)e.NavigationParameter;
+            this.DefaultViewModel[DistrictDataName] = _currentDistrict;
         }
 
         /// <summary>
@@ -112,12 +100,12 @@ namespace PostCodeXian
         /// handlers that cannot cancel the navigation request.</param>
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
-            this.navigationHelper.OnNavigatedTo(e);
+            this._navigationHelper.OnNavigatedTo(e);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            this.navigationHelper.OnNavigatedFrom(e);
+            this._navigationHelper.OnNavigatedFrom(e);
         }
 
         #endregion
@@ -125,12 +113,12 @@ namespace PostCodeXian
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             string postCode = (sender as Button).Content.ToString();
-            List<PostCodeItem> postCodeItemList = DistrictDataSource.GetInstance().PostCodeLibrary[currentDistrict];
+            List<PostCodeItem> postCodeItemList = DistrictDataSource.GetInstance().PostCodeLibrary[_currentDistrict];
             int selectedIndex = postCodeItemList.FindIndex(item => item.PostCode == postCode);
             PostCodeItem postCodeItem = postCodeItemList[selectedIndex];
-            if (!Frame.Navigate(typeof(PCItem), postCodeItem))
+            if (!Frame.Navigate(typeof(PcItem), postCodeItem))
             {
-                throw new Exception(this.resourceLoader.GetString("NavigationFailedExceptionMessage"));
+                throw new Exception(this._resourceLoader.GetString(@"NavigationFailedExceptionMessage"));
             }
         }
     }

@@ -1,25 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Windows.UI.Xaml.Controls;
-// Email
 using Windows.ApplicationModel.Email;
-// Storage
-using Windows.Storage;
-using Windows.Storage.Streams;
-using Windows.Foundation;
-// For debugging
-using System.Diagnostics;
-// NET & Data
 using Windows.Data.Json;
-using System.Xml;
-using System.Xml.Linq;
-using System.Net.Http;
-using System.IO;
+using Windows.Storage;
 
-namespace PostCodeXian
+namespace PostCodeXian.Common
 {
     static class CommonTaskClient
     {
@@ -33,15 +21,19 @@ namespace PostCodeXian
 
         public static string[] AboutInfo()
         {
+            if (ApplicationData.Current.LocalSettings.Values["DataFileVersion"] == null)
+            {
+                ApplicationData.Current.LocalSettings.Values["DataFileVersion"] = "1.0";
+            }
             string version = ApplicationData.Current.LocalSettings.Values["DataFileVersion"].ToString();
             return new[] { "西安邮政编码查询", "版本：1.0.0.0\n开发者：肖勇\n邮编数据库版本：" + version};
         }
 
-        public static async Task Download(ChangeProgress change)
+        public static async Task Download(UpdateProgress change)
         {
             ulong currentSize = 0;
             // Replace existed file
-            string fileName = "DistrictData.json";
+            const string fileName = "DistrictData.json";
             var newLibraryFile = await ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
             Uri downloadUri = new Uri("http://localhost:62874/MainService.svc/DownloadNewLibrary");
             using (HttpClient downloadClient = new HttpClient())
@@ -60,8 +52,8 @@ namespace PostCodeXian
                         await Task.Delay(200);  // Simulated time delay
                         tempStr += Encoding.UTF8.GetString(buffer, 0, readBytes);
                         currentSize += (ulong)readBytes;
-                        change((int)((int)currentSize * 100 / totalBytes));
-                        readBytes = downloaded.Read(buffer, 0, (int)readBytes);
+                        change(((int)currentSize * 100 / totalBytes));
+                        readBytes = downloaded.Read(buffer, 0, readBytes);
                     }
                     await FileIO.WriteTextAsync(newLibraryFile, tempStr);
                     downloaded.Flush();
@@ -119,12 +111,7 @@ namespace PostCodeXian
             string[] currentVersionDigits = currentVersion.Split('.');
             string[] futureVersionDigits = newVersion.Split('.');
 
-            for (int i = 0; i < futureVersionDigits.Length; i++)
-            {
-                if (currentVersionDigits[i].CompareTo(futureVersionDigits[i]) < 0)
-                    return true;
-            }
-            return false;
+            return futureVersionDigits.Where((t, i) => currentVersionDigits[i].CompareTo(t) < 0).Any();
         }
     }
 }

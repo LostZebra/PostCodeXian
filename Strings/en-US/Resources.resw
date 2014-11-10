@@ -120,9 +120,6 @@
   <data name="AddAppBarButton.Label" xml:space="preserve">
     <value>add</value>
   </data>
-  <data name="Header.Text" xml:space="preserve">
-    <value>MY APPLICATION</value>
-  </data>
   <data name="NavigationFailedExceptionMessage" xml:space="preserve">
     <value>Navigation failed.</value>
   </data>
@@ -134,12 +131,6 @@
   </data>
   <data name="Pivot.Title" xml:space="preserve">
     <value>MY APPLICATION</value>
-  </data>
-  <data name="PivotItem1.Header" xml:space="preserve">
-    <value>first</value>
-  </data>
-  <data name="PivotItem2.Header" xml:space="preserve">
-    <value>second</value>
   </data>
   <data name="SecondaryButton1.Label" xml:space="preserve">
     <value>secondary command 1</value>

@@ -1,9 +1,7 @@
 ﻿<Page
-    x:Class="PostCodeXian.PCItem"
+    x:Class="PostCodeXian.PcItem"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:PostCodeXian"
-    xmlns:data="using:PostCodeXian.Data"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -25,16 +23,17 @@
         </Grid.RowDefinitions>
 
         <!-- Title Panel -->
-        <StackPanel Grid.Row="0" Margin="19,0,0,0">
-            <TextBlock Text="西安邮政编码查询" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,12,0,0"/>
+        <StackPanel Grid.Row="0" Margin="19,9,0,0">
+            <Grid Height="40">
+                <TextBlock Text="西安邮政编码查询" Style="{ThemeResource TitleTextBlockStyle}" VerticalAlignment="Center"/>
+            </Grid>
             <TextBlock Text="{Binding PostCode}" Margin="0,-6.5,0,26.5" Style="{ThemeResource HeaderTextBlockStyle}" CharacterSpacing="{ThemeResource PivotHeaderItemCharacterSpacing}"/>
         </StackPanel>
 
         <!--TODO: Content should be placed within the following grid-->
         <Grid Grid.Row="1" Margin="19,0,0,0">
             <ListView 
-                x:Name="postCodeList"
-                Grid.Row="1"
+                x:Name="PostCodeList"
                 IsItemClickEnabled="False"
                 ItemsSource="{Binding StreetList}"
                 ContinuumNavigationTransitionInfo.ExitElementContainer="True">

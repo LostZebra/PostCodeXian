@@ -1,88 +1,76 @@
 ﻿using PostCodeXian.Common;
 using PostCodeXian.Data;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel.Resources;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.Graphics.Display;
 using Windows.UI;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Windows.UI.Xaml.Documents;
+// StatusBar
+using Windows.UI.ViewManagement;
 // For debugging
 using System.Diagnostics;
 // Net & Data
-using Windows.Data.Json;
 using System.Net;
 using System.Net.Http;
 using Windows.Storage;
-// Xml parser
-using System.Xml.Linq;
 
 // The Pivot Application template is documented at http://go.microsoft.com/fwlink/?LinkID=391641
 
 namespace PostCodeXian
 {
-    delegate void ChangeProgress(int i);
-    public sealed partial class PivotPage : Page
+    delegate void UpdateProgress(int i);
+    public sealed partial class PivotPage
     {
         private const string DistrictDataSetName = "DistrictDataSet";
         private const string ProgressBarWidthName = "ProgressBarWidth";
         private const string SearchedResultsName = "SearchedResultsGroup";
-        private const Visibility visible = Visibility.Visible;
-        private const Visibility collapsed = Visibility.Collapsed;
-        private const int firstPivotItem = 1;
-        private const int secondPivotItem = 2;
+        private const Visibility Visible = Visibility.Visible;
+        private const Visibility Collapsed = Visibility.Collapsed;
+        private const int FirstPivotItem = 1;
+        private const int SecondPivotItem = 2;
 
-        private readonly NavigationHelper navigationHelper;
-        private readonly ObservableDictionary defaultViewModel = new ObservableDictionary();
-        private readonly ResourceLoader resourceLoader = ResourceLoader.GetForCurrentView("Resources");
+        private readonly NavigationHelper _navigationHelper;
+        private readonly ObservableDictionary _defaultViewModel = new ObservableDictionary();
+        private readonly ResourceLoader _resourceLoader = ResourceLoader.GetForCurrentView(@"Resources");
+        private StatusBar _statusBar = StatusBar.GetForCurrentView();
 
-        private bool isDownloading = false;
-        private bool isUpdateChecked = false;
+        private bool _isDownloading;
+        private bool _isUpdateChecked;
+        private bool _isPinningFinished;
 
         // Black and white brush
-        private SolidColorBrush whiteBrush = new SolidColorBrush(Colors.White);
-        private SolidColorBrush blackBrush = new SolidColorBrush(Colors.Black);
-
-        private bool isPinningFinished = false;
+        private readonly SolidColorBrush _whiteBrush = new SolidColorBrush(Colors.White);
+        private readonly SolidColorBrush _blackBrush = new SolidColorBrush(Colors.Black);
 
         public PivotPage()
         {
             this.InitializeComponent();
 
-            this.navigationHelper = new NavigationHelper(this);
-            this.navigationHelper.LoadState += this.NavigationHelper_LoadState;
-            this.navigationHelper.SaveState += this.NavigationHelper_SaveState;
+            _navigationHelper = new NavigationHelper(this);
+            _navigationHelper.LoadState += NavigationHelper_LoadState;
+            _navigationHelper.SaveState += NavigationHelper_SaveState;
 
-            this.searchedResultsListView.ItemClick += this.searchedResultsListView_ItemClick;
-            this.searchedResultsListView.ItemClick += this.searchBox_LostFocus;
-            this.searchBox.KeyDown += this.enterKeyDown_handler;
+            this.SearchedResultsListView.ItemClick += SearchedResultsListView_ItemClick;
+            this.SearchedResultsListView.ItemClick += SearchBox_LostFocus;
+            this.SearchBox.KeyDown += enterKeyDown_handler;
 
             // Modify download title layout
             double width = Window.Current.Bounds.Width;
-            this.defaultViewModel[ProgressBarWidthName] = width - 50;
+            _defaultViewModel[ProgressBarWidthName] = width - 50;
 
-            // Behaviours when selected pivot item changes
-            this.pivot.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e)
+            // Behaviours when selected Pivot item changes
+            this.Pivot.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e)
             {
-                if ((sender as Pivot).SelectedIndex == 1)
+                var pivot = sender as Pivot;
+                if (pivot != null && pivot.SelectedIndex == 1)
                 {
-                    if (!isPinningFinished)
+                    if (!_isPinningFinished)
                     {
                         SecondPivot_Loaded();
                     }
@@ -95,7 +83,7 @@ namespace PostCodeXian
         /// </summary>
         public NavigationHelper NavigationHelper
         {
-            get { return this.navigationHelper; }
+            get { return _navigationHelper; }
         }
 
         /// <summary>
@@ -104,7 +92,7 @@ namespace PostCodeXian
         /// </summary>
         public ObservableDictionary DefaultViewModel
         {
-            get { return this.defaultViewModel; }
+            get { return _defaultViewModel; }
         }
 
         /// <summary>
@@ -123,35 +111,51 @@ namespace PostCodeXian
             if (ApplicationData.Current.LocalSettings.Values["Launched"] == null)
             {
                 ApplicationData.Current.LocalSettings.Values["Launched"] = true;
-                isUpdateChecked = true;
-                isDownloading = true;
-                showUpdateStatus("正在准备数据");
-                ChangeProgress updateProgress = new ChangeProgress(changeProgress);
-                await CommonTaskClient.CheckFile();
-                await CommonTaskClient.Download(updateProgress);
+                _isUpdateChecked = true;
+                _isDownloading = true;
+                ShowUpdateStatus("正在准备数据");
+                UpdateProgress updateProgress = ChangeProgress;
+                try
+                {
+                    await CommonTaskClient.CheckFile();
+                    await CommonTaskClient.Download(updateProgress);
+                }
+                catch (HttpRequestException)
+                {
+                    ShowUpdateStatus("网络连接错误");
+                }
             }
             // TODO: Create an appropriate data model for your problem domain to replace the sample data
             DistrictDataSource dataSource = DistrictDataSource.GetInstance();
-            await dataSource.GetDistrictData();
-            this.defaultViewModel[DistrictDataSetName] = dataSource;
+            try
+            {
+                await dataSource.GetDistrictData();
+                _defaultViewModel[DistrictDataSetName] = dataSource;
+            }
+            catch (FileNotFoundException)
+            {
+                ShowUpdateStatus("本地邮编数据库加载失败");
+            }
             
             // Async check update
-            isUpdateChecked = (e.PageState == null || !e.PageState.ContainsKey("IsUpdateChecked")) ? isUpdateChecked : (bool)e.PageState["IsUpdateChecked"];
-            if (!isUpdateChecked)
+            _isUpdateChecked = (e.PageState == null || !e.PageState.ContainsKey("IsUpdateChecked")) ? _isUpdateChecked : (bool)e.PageState["IsUpdateChecked"];
+            if (!_isUpdateChecked)
             {
-                isUpdateChecked = true;
+                _isUpdateChecked = true;
                 bool isCheckUpdateSucceed = true;
 
-                showUpdateStatus("正在检查更新...");              
+                ShowUpdateStatus("正在检查更新...");
+                _statusBar.ProgressIndicator.ShowAsync();
+
                 try
                 {
                     bool isUpdateAvailable = await CommonTaskClient.IsUpdateAvailable();
                     await Task.Delay(500);
                     if (isUpdateAvailable)
                     {
-                        showUpdateStatus("邮编数据库有新版本");  
+                        ShowUpdateStatus("邮编数据库有新版本");  
                         MessageDialog updateAvalible = new MessageDialog("有可用的邮编数据库更新，要下载吗？", "提示");
-                        updateAvalible.Commands.Add(new UICommand("开始下载", new UICommandInvokedHandler(updateDialogCommanHander), 0));
+                        updateAvalible.Commands.Add(new UICommand("开始下载", UpdateDialogCommanHander, 0));
                         updateAvalible.Commands.Add(new UICommand("以后再说", null, 1));
                         updateAvalible.DefaultCommandIndex = 0;
                         updateAvalible.CancelCommandIndex = 1;
@@ -159,7 +163,8 @@ namespace PostCodeXian
                     }
                     else
                     {
-                        showUpdateStatus("无可用更新");
+                        ShowUpdateStatus("无可用更新");
+                        _statusBar.ProgressIndicator.HideAsync();
                     }
                 }
                 catch (HttpRequestException)
@@ -172,10 +177,11 @@ namespace PostCodeXian
                 }
                 if (!isCheckUpdateSucceed)
                 {
-                    showUpdateStatus("获取更新失败");
+                    ShowUpdateStatus("获取更新失败");
+                    _statusBar.ProgressIndicator.HideAsync();
                 }
                 await Task.Delay(500);
-                this.defaultViewModel["UpdateStatus"] = "";
+                _defaultViewModel["UpdateStatus"] = "";
             }
         }
 
@@ -190,7 +196,7 @@ namespace PostCodeXian
         private void NavigationHelper_SaveState(object sender, SaveStateEventArgs e)
         {
             // TODO: Save the unique state of the page here.
-            e.PageState["IsUpdateChecked"] = isUpdateChecked;
+            e.PageState["IsUpdateChecked"] = _isUpdateChecked;
         }
 
         /// <summary>
@@ -203,20 +209,20 @@ namespace PostCodeXian
             District district = (District)e.ClickedItem;
             if (!Frame.Navigate(typeof(DistrictItem), district))
             {
-                throw new Exception(this.resourceLoader.GetString("NavigationFailedExceptionMessage"));
+                throw new Exception(_resourceLoader.GetString(@"NavigationFailedExceptionMessage"));
             }
         }
 
         /// <summary>
-        /// Loads the content for the second pivot item when it is scrolled into view.
+        /// Loads the content for the second Pivot item when it is scrolled into view.
         /// </summary>
         private async void SecondPivot_Loaded()
         {
             if (ApplicationData.Current.LocalSettings.Values["AccessGeo"] == null)
             {
                 MessageDialog accessingGeoLocator = new MessageDialog("请求访问地理信息数据", "提示");
-                accessingGeoLocator.Commands.Add(new UICommand("允许", new UICommandInvokedHandler(geoDialogCommandHandler), 0));
-                accessingGeoLocator.Commands.Add(new UICommand("不允许", new UICommandInvokedHandler(geoDialogCommandHandler), 0));
+                accessingGeoLocator.Commands.Add(new UICommand("允许", geoDialogCommandHandler, 0));
+                accessingGeoLocator.Commands.Add(new UICommand("不允许", geoDialogCommandHandler, 0));
                 accessingGeoLocator.DefaultCommandIndex = 0;
                 accessingGeoLocator.CancelCommandIndex = 1;
                 await accessingGeoLocator.ShowAsync();
@@ -226,17 +232,17 @@ namespace PostCodeXian
             {
                 MessageDialog refuseAccessGeoLocator = new MessageDialog("访问地理位置信息被拒绝", "提示");
                 refuseAccessGeoLocator.Commands.Add(new UICommand("放弃", null, 0));
-                refuseAccessGeoLocator.Commands.Add(new UICommand("给予权限", new UICommandInvokedHandler(geoDialogCommandHandler), 1));
+                refuseAccessGeoLocator.Commands.Add(new UICommand("给予权限", geoDialogCommandHandler, 1));
                 refuseAccessGeoLocator.DefaultCommandIndex = 0;
                 refuseAccessGeoLocator.CancelCommandIndex = 1;
                 await refuseAccessGeoLocator.ShowAsync();
             }
             else
             {
-                string street = await gettingStreet();
+                string street = await GettingStreet();
                 if (street != null)
                 {
-                    await gettingPostCode(firstPivotItem, street);
+                    await GettingPostCode(FirstPivotItem, street);
                 }
             }
         }
@@ -247,74 +253,74 @@ namespace PostCodeXian
             if (commandResult.Label.Equals("允许") || commandResult.Label.Equals("给予权限"))
             {
                 ApplicationData.Current.LocalSettings.Values["AccessGeo"] = true;
-                string street = await gettingStreet();
+                string street = await GettingStreet();
                 if (street != null)
                 {
-                    await gettingPostCode(firstPivotItem, street);
+                    await GettingPostCode(FirstPivotItem, street);
                 }
             }
             else if (commandResult.Label.Equals("不允许"))
             {
                 ApplicationData.Current.LocalSettings.Values["AccessGeo"] = false;
-                gettingStreetFinished(false);      
+                GettingStreetFinished();      
             }
         }
 
-        private async void updateDialogCommanHander(IUICommand commandResult)
+        private async void UpdateDialogCommanHander(IUICommand commandResult)
         {
             if (commandResult.Label.Equals("开始下载"))
             {
-                showUpdateStatus("开始下载...");
-                isDownloading = true;
+                ShowUpdateStatus("开始下载...");
+                _isDownloading = true;
 
-                ChangeProgress updateProgress = new ChangeProgress(changeProgress);
+                UpdateProgress updateProgress = ChangeProgress;
                 await CommonTaskClient.Download(updateProgress);
 
-                showUpdateStatus("下载完成,重启应用完成更改"); 
+                ShowUpdateStatus("下载完成,重启应用完成更改"); 
                 await Task.Delay(1000);  // Simulated task delay
-                this.defaultViewModel["UpdateStatus"] = "";
+                _defaultViewModel["UpdateStatus"] = "";
             }
         }
 
-        private void gettingStreetFinished(bool getAccessed = false, bool isSuccess = false)
+        private void GettingStreetFinished(bool getAccessed = false, bool isSuccess = false)
         {
             if (getAccessed && isSuccess)
             {
-                this.pinningStatus.Text = "开始获取邮政编码...";
+                this.PinningStatus.Text = "开始获取邮政编码...";
             }
             else if (!isSuccess)
             {
-                this.pinningStatus.Text = String.Empty;
-                this.pinningLocation.Visibility = collapsed;
-                this.resultStatus.Text = "获取地理位置信息失败";
-                this.retryPin.Visibility = visible;
-                this.retryPin.Content = "重试";
+                this.PinningStatus.Text = String.Empty;
+                this.PinningLocation.Visibility = Collapsed;
+                this.ResultStatus.Text = "获取地理位置信息失败";
+                this.RetryPin.Visibility = Visible;
+                this.RetryPin.Content = "重试";
             }
             else
             {
-                this.pinningStatus.Text = String.Empty;
-                this.pinningLocation.Visibility = collapsed;
-                this.resultStatus.Text = "拒绝访问地理位置信息";
+                this.PinningStatus.Text = String.Empty;
+                this.PinningLocation.Visibility = Collapsed;
+                this.ResultStatus.Text = "拒绝访问地理位置信息";
             }
-            this.isPinningFinished = true;
+            _isPinningFinished = true;
         }
 
-        private void beforeGettingStreet()
+        private void BeforeGettingStreet()
         {
-            if (this.retryPin.Visibility == visible)
+            if (this.RetryPin.Visibility == Visible)
             {
-                this.retryPin.Visibility = collapsed;
-                this.retryPin.Content = String.Empty;
+                this.RetryPin.Visibility = Collapsed;
+                this.RetryPin.Content = String.Empty;
             }
-            this.resultStatus.Text = String.Empty;
-            this.pinningLocation.Visibility = Visibility.Visible;
-            this.pinningStatus.Text = "定位中....";
+            this.ResultStatus.Text = String.Empty;
+            this.PinningLocation.Visibility = Visibility.Visible;
+            this.PinningStatus.Text = "定位中....";
         }
 
-        private async Task<string> gettingStreet()
+        private async Task<string> GettingStreet()
         {
             string street = null;
-            beforeGettingStreet();
+            BeforeGettingStreet();
             bool webRequestSucceed = true;
             try
             {
@@ -329,52 +335,57 @@ namespace PostCodeXian
             {
                 webRequestSucceed = false;
             }
-            gettingStreetFinished(true, webRequestSucceed);
+            GettingStreetFinished(true, webRequestSucceed);
             return street;
         }
 
-        private async Task gettingPostCode(int pivotItemIndex, string streetAddress)
+        private async Task GettingPostCode(int pivotItemIndex, string streetAddress)
         {
-            string result = null;
             bool webRequestFailed = false;
             try
             {
-                if (pivotItemIndex == 1)
+                switch (pivotItemIndex)
                 {
-                    if (streetAddress == null)
+                    case 1:
                     {
-                        result = "没有找到匹配的邮政编码";
+                        string result;
+                        if (streetAddress == null)
+                        {
+                            result = "没有找到匹配的邮政编码";
+                        }
+                        else
+                        {
+                            string postCode = await MapClient.getInstance().QueryPostCodeResult(streetAddress);
+                            if (postCode != null)
+                            {
+                                result = "您查询的邮政编码是:\n" + postCode;
+                            }
+                            else
+                            {
+                                result = "没有找到匹配的邮政编码";
+                            }
+                        }
+                        this.ResultStatus.Text = result;
+                        this.PinningLocation.Visibility = Collapsed;
+                        this.PinningStatus.Text = "获取邮编完成";
+                        this.RetryPin.Visibility = Visible;
+                        this.RetryPin.Content = "重新定位";
+                        break;
                     }
-                    else
+                    case 2:
                     {
                         string postCode = await MapClient.getInstance().QueryPostCodeResult(streetAddress);
                         if (postCode != null)
                         {
-                            result = "您查询的邮政编码是:\n" + postCode;
+                            this.PostCodeDisplay.Text = "您查询的邮政编码是:\n" + postCode;
                         }
                         else
                         {
-                            result = "没有找到匹配的邮政编码";
+                            this.PostCodeDisplay.Text = "没有找到匹配的邮政编码\n请输入所在地的道路名称";
                         }
+                        this.FetchingPostCode.IsActive = false;
+                        break;
                     }
-                    this.resultStatus.Text = result;
-                    this.pinningLocation.Visibility = collapsed;
-                    this.pinningStatus.Text = "获取邮编完成";
-                    this.retryPin.Visibility = visible;
-                    this.retryPin.Content = "重新定位";
-                }
-                else if (pivotItemIndex == 2)
-                {
-                    string postCode = await MapClient.getInstance().QueryPostCodeResult(streetAddress);
-                    if (postCode != null)
-                    {
-                        this.postCodeDisplay.Text = "您查询的邮政编码是:\n" + postCode;
-                    }
-                    else
-                    {
-                        this.postCodeDisplay.Text = "没有找到匹配的邮政编码\n请输入所在地的道路名称";
-                    }
-                    this.fetchingPostCode.IsActive = false;
                 }
             }
             catch (HttpRequestException)
@@ -387,34 +398,34 @@ namespace PostCodeXian
             }
             if(webRequestFailed)
             {
-                this.resultStatus.Text = "获取邮编失败";
-                this.pinningLocation.Visibility = collapsed;
-                this.pinningStatus.Text = "获取邮编完成";
-                this.retryPin.Visibility = visible;
-                this.retryPin.Content = "重新定位";
+                this.ResultStatus.Text = "获取邮编失败";
+                this.PinningLocation.Visibility = Collapsed;
+                this.PinningStatus.Text = "获取邮编完成";
+                this.RetryPin.Visibility = Visible;
+                this.RetryPin.Content = "重新定位";
             }
         }
 
-        public void changeProgress(int i)
+        public void ChangeProgress(int i)
         {
-            if (this.downloadProgressBar.Visibility == collapsed && isDownloading)
+            if (this.DownloadProgressBar.Visibility == Collapsed && _isDownloading)
             {
-                this.downloadProgressBar.Visibility = visible;
-                this.downloadProgress.Visibility = visible;
+                this.DownloadProgressBar.Visibility = Visible;
+                this.DownloadProgress.Visibility = Visible;
             }
             if (i == 100)
             {
-                this.downloadProgressBar.Visibility = collapsed;
-                this.downloadProgress.Visibility = collapsed;
-                isDownloading = false;  // Download completed
+                this.DownloadProgressBar.Visibility = Collapsed;
+                this.DownloadProgress.Visibility = Collapsed;
+                _isDownloading = false;  // Download completed
             }
-            this.downloadProgressBar.Value = i;
+            this.DownloadProgressBar.Value = i;
         }
 
-        private void showUpdateStatus(string status)
+        private void ShowUpdateStatus(string status)
         {
             VisualStateManager.GoToState(this, "TextBlockOpacityIncrease", true);  // Testing
-            this.defaultViewModel["UpdateStatus"] = status;
+            _defaultViewModel["UpdateStatus"] = status;
             VisualStateManager.GoToState(this, "TextBlockOpacityReverse", true);  // Testing
         }
 
@@ -435,30 +446,27 @@ namespace PostCodeXian
         /// handlers that cannot cancel the navigation request.</param>
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
-            this.navigationHelper.OnNavigatedTo(e);
+            _navigationHelper.OnNavigatedTo(e);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            this.navigationHelper.OnNavigatedFrom(e);
+            _navigationHelper.OnNavigatedFrom(e);
         }
 
         #endregion
 
-        private void pivot_Loaded(object sender, RoutedEventArgs e)
+        private void Pivot_Loaded(object sender, RoutedEventArgs e)
         {
-            this.pivot.Title = "西安市邮政编码查询";
-            this.localPostCode.Header = "当前位置";
-            this.postCodeLibrary.Header = "邮编库";
-            this.searchPostCode.Header = "搜索";
+            Debug.WriteLine(sender);
         }
-         
-        // Behaviours when text in searchBox changes
-        private async void searchBox_TextChanged(object sender, TextChangedEventArgs e)
+
+        // Behaviours when text in SearchBox changes
+        private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string searchBoxText = (sender as TextBox).Text;
             bool webRequestFailed = false;
-            if (searchBoxText.Length != 0 && this.searchBox.FocusState != FocusState.Unfocused)
+            if (searchBoxText.Length != 0 && this.SearchBox.FocusState != FocusState.Unfocused)
             {
                 this.DefaultViewModel[SearchedResultsName] = null; // Reset
                 SearchedResults searchedResults = SearchedResults.GetInstance();
@@ -479,39 +487,37 @@ namespace PostCodeXian
                 {
                     MessageDialog fileNotFoundDialog = new MessageDialog("网络连接错误!", "错误");
                     fileNotFoundDialog.Commands.Add(new UICommand("我知道了", null, 0));
-                    var commandSelected = await fileNotFoundDialog.ShowAsync();
+                    await fileNotFoundDialog.ShowAsync();
                 }
                 
             }
-            else if (this.searchBox.FocusState != FocusState.Unfocused)
+            else if (this.SearchBox.FocusState != FocusState.Unfocused)
             {
-                this.postCodeDisplay.Text = String.Empty;
+                this.PostCodeDisplay.Text = String.Empty;
             }
         }
 
-        // Behaviours of searchBox events
-        private void searchBox_GotFocus(object sender, RoutedEventArgs e)
+        // Behaviours of SearchBox events
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            if (this.searchedResultsListView.Items.Count == 0)
-            {
-                this.searchBox.Text = String.Empty;
-                this.searchBox.Foreground = this.blackBrush;
-            }
+            if (this.SearchedResultsListView.Items == null || this.SearchedResultsListView.Items.Count != 0) return;
+            this.SearchBox.Text = String.Empty;
+            this.SearchBox.Foreground = _blackBrush;
         }
 
-        private void searchBox_LostFocus(object sender, RoutedEventArgs e)
+        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (this.searchedResultsListView.Items.Count == 0)
+            if (this.SearchedResultsListView.Items != null && this.SearchedResultsListView.Items.Count == 0)
             {
-                this.searchBox.Text = "搜索邮编";
-                this.searchBox.Background = this.blackBrush;
-                this.searchBox.Foreground = this.whiteBrush;
+                this.SearchBox.Text = "搜索邮编";
+                this.SearchBox.Background = _blackBrush;
+                this.SearchBox.Foreground = _whiteBrush;
             }
             else
             {
-                // Stop default appearance changes on searchBox
-                this.searchBox.Background = this.whiteBrush;
-                this.searchBox.Foreground = this.blackBrush;
+                // Stop default appearance changes on SearchBox
+                this.SearchBox.Background = _whiteBrush;
+                this.SearchBox.Foreground = _blackBrush;
             }
         }
 
@@ -523,22 +529,26 @@ namespace PostCodeXian
             }
         }
 
-        private async void searchedResultsListView_ItemClick(object sender, ItemClickEventArgs e)
+        private async void SearchedResultsListView_ItemClick(object sender, ItemClickEventArgs e)
         {
-            this.fetchingPostCode.IsActive = true;           
+            this.FetchingPostCode.IsActive = true;           
             // Fetching post code 
-            string streetAddress = (e.ClickedItem as SearchedResultItem).Address;
-            this.DefaultViewModel[SearchedResultsName] = null;  // Disable search result list
-            await gettingPostCode(secondPivotItem, streetAddress);
+            var clickedItem = e.ClickedItem as SearchedResultItem;
+            if (clickedItem != null)
+            {
+                string streetAddress = clickedItem.Address;
+                this.DefaultViewModel[SearchedResultsName] = null;  // Disable search result list
+                await GettingPostCode(SecondPivotItem, streetAddress);
+            }
         }
 
         // Relocate user's current location
-        private async void retryPin_Click(object sender, RoutedEventArgs e)
+        private async void RetryPin_Click(object sender, RoutedEventArgs e)
         {
-            string street = await gettingStreet();
+            string street = await GettingStreet();
             if (street != null)
             {
-                await gettingPostCode(firstPivotItem, street);
+                await GettingPostCode(FirstPivotItem, street);
             }   
         }
 
@@ -552,7 +562,7 @@ namespace PostCodeXian
         {
             if (!Frame.Navigate(typeof(AboutPage), null))
             {
-                throw new Exception(this.resourceLoader.GetString("NavigationFailedExceptionMessage"));
+                throw new Exception(_resourceLoader.GetString(@"NavigationFailedExceptionMessage"));
             }
         }
     }
