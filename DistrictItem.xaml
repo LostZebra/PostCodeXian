@@ -6,7 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     DataContext="{Binding DefaultViewModel.DistrictData, RelativeSource={RelativeSource Self}}"
-    d:DataContext="{Binding District, Source={d:DesignData Source=/DataModel/DistrictData.json, Type=data:DistrictDataSource}}"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
     
     <!--Page.Transitions>
@@ -50,7 +49,8 @@
             </ListView.ItemsPanel>
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Button Margin="19,0,0,0" Width="150" Height="Auto" Content="{Binding}" FontSize="30" BorderThickness="1" Click="Button_Click"/>
+                    <Button Margin="19,0,0,0" Width="150" Height="Auto" Content="{Binding}" FontSize="30" BorderThickness="0.5" Click="Button_Click" BorderBrush="{StaticResource PhoneAccentBrush}">
+                    </Button>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>

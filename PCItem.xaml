@@ -6,7 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     DataContext="{Binding DefaultViewModel.PostCodeData, RelativeSource={RelativeSource Self}}"
-    d:DataContext="{Binding PostCodeItem, Source={d:DesignData Source=/DataModel/DistrictData.json, Type=data:DistrictDataSource}}"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid x:Name="LayoutRoot">
@@ -36,10 +35,11 @@
                 x:Name="PostCodeList"
                 IsItemClickEnabled="False"
                 ItemsSource="{Binding StreetList}"
+                
                 ContinuumNavigationTransitionInfo.ExitElementContainer="True">
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Margin="0,5,0,5" Width="150" Height="Auto" Text="{Binding}" FontSize="30"/>
+                        <TextBlock Margin="0,5,0,5" Width="350" Height="Auto" MaxLines="3" Text="{Binding}" TextWrapping="Wrap" FontSize="30"/>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>

@@ -1,20 +1,10 @@
-﻿// Self defined
-using PostCodeXian.Common;
-// System
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-// Net & Data
 using Windows.Data.Json;
-using System.Net.Http;
-// Regular expression
-using System.Text.RegularExpressions;
-// For debugging
-using System.Diagnostics;
+using PostCodeXian.Common;
 
-namespace PostCodeXian.Data
+namespace PostCodeXian.DataModel
 {
     public class SearchedResultItem
     {

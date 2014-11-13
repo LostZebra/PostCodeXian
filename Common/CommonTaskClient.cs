@@ -13,19 +13,14 @@ namespace PostCodeXian.Common
     {
         public static async void SendFeedBack()
         {
-            EmailMessage em = new EmailMessage();
-            em.Subject = "西安邮政编码查询_意见反馈";
+            EmailMessage em = new EmailMessage {Subject = "西安邮政编码查询_意见反馈"};
             em.To.Add(new EmailRecipient("xiaoyong19910227@gmail.com", "开发者"));
             await EmailManager.ShowComposeNewEmailAsync(em);
         }
 
         public static string[] AboutInfo()
         {
-            if (ApplicationData.Current.LocalSettings.Values["DataFileVersion"] == null)
-            {
-                ApplicationData.Current.LocalSettings.Values["DataFileVersion"] = "1.0";
-            }
-            string version = ApplicationData.Current.LocalSettings.Values["DataFileVersion"].ToString();
+            string version = (ApplicationData.Current.LocalSettings.Values["DataFileVersion"] == null) ? "1.0" : ApplicationData.Current.LocalSettings.Values["DataFileVersion"].ToString();
             return new[] { "西安邮政编码查询", "版本：1.0.0.0\n开发者：肖勇\n邮编数据库版本：" + version};
         }
 
@@ -61,7 +56,7 @@ namespace PostCodeXian.Common
             }     
         }
 
-        public static async Task CheckFile()
+        public static async Task UpdateFileVersion()
         {
             Uri clientUri = new Uri("http://localhost:62874/MainService.svc/FileDescription");
             using (HttpClient client = new HttpClient())
@@ -72,11 +67,8 @@ namespace PostCodeXian.Common
                 // Get file description successful
                 if (fileDesJson["Status"].GetString().Equals("OK"))
                 {
-                    if (ApplicationData.Current.LocalSettings.Values["DataFileVersion"] == null)
-                    {
-                        // Update file version
-                        ApplicationData.Current.LocalSettings.Values["DataFileVersion"] = fileDesJson["FileVersion"].GetString();
-                    }
+                    // Update file version
+                    ApplicationData.Current.LocalSettings.Values["DataFileVersion"] = fileDesJson["FileVersion"].GetString();
                 }
             }    
         }

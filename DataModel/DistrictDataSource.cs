@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Windows.Data.Json;
 using Windows.Storage;
 // For debugging
-using System.Diagnostics;
+// using System.Diagnostics;
 
-namespace PostCodeXian.Data
+namespace PostCodeXian.DataModel
 {
     class District
     {
@@ -36,7 +35,7 @@ namespace PostCodeXian.Data
 
     class DistrictDataSource
     {
-        public static DistrictDataSource dataSource;
+        public static DistrictDataSource DataSource;
         public List<District> DistrictList { get; private set; }
         public Dictionary<District, List<PostCodeItem>> PostCodeLibrary { get; private set; }
 
@@ -48,11 +47,11 @@ namespace PostCodeXian.Data
 
         public static DistrictDataSource GetInstance()
         {
-            if (dataSource == null)
+            if (DataSource == null)
             {
-                dataSource = new DistrictDataSource();
+                DataSource = new DistrictDataSource();
             }
-            return dataSource;
+            return DataSource;
         }
 
         public async Task GetDistrictData()
@@ -61,40 +60,21 @@ namespace PostCodeXian.Data
             {
                 return;
             }
-            // Testing
-            StorageFolder folder = Windows.Storage.ApplicationData.Current.LocalFolder;
-            var file = await folder.GetFileAsync("DistrictData.json");
+            StorageFolder folder = ApplicationData.Current.LocalFolder;
+            var file = await folder.GetFileAsync("DistrictDataBackup.json");
+            // var file = await folder.GetFileAsync("DistrictData.json");
             string districtJsonText = await FileIO.ReadTextAsync(file);
             JsonObject districtJsonObject = JsonObject.Parse(districtJsonText);
-            /*
-            Uri districtDataUri = new Uri("ms-appx:///DataModel/DistrictData.json");
-            StorageFile districtDataFile = await StorageFile.GetFileFromApplicationUriAsync(districtDataUri);
-            string districtJsonText = await FileIO.ReadTextAsync(districtDataFile);
-            JsonObject districtJsonObject = JsonObject.Parse(districtJsonText);
-            */
             // New DistrictData object
             foreach (var districtName in districtJsonObject.Keys)
             {
-                JsonObject postCodeJsonObj = districtJsonObject[districtName].GetObject();
-                JsonObject postCodeJsonArray = postCodeJsonObj["PostCodes"].GetObject();
-                // Add all post codes corresponding to certain district
-                List<string> postCodeList = new List<string>(postCodeJsonArray.Keys);  
-                District district = new District(districtName, postCodeList);
+                JsonObject postcodeAddressJsonObj = districtJsonObject[districtName].GetObject();
+                List<string> postcodeList = new List<string>(postcodeAddressJsonObj.Keys);
+                District district = new District(districtName, postcodeList);
                 this.DistrictList.Add(district); 
-                // List for all PostCodeItems
-                List<PostCodeItem> postCodeItemList = new List<PostCodeItem>();
-                foreach (var postCode in postCodeJsonArray.Keys)
-                {           
-                    JsonObject streetJsonArray = postCodeJsonArray[postCode].GetObject();
-                    // Adding all streets corresponding to certain post code
-                    List<string> streetList = new List<string>();  
-                    foreach (var streetIndex in streetJsonArray.Keys)
-                    {
-                        streetList.Add(streetJsonArray[streetIndex].GetString());
-                    }
-                    postCodeItemList.Add(new PostCodeItem(postCode, streetList));
-                }
-                this.PostCodeLibrary.Add(district, postCodeItemList);
+                // List for all Postcode items
+                List<PostCodeItem> postcodeItemList = (from postcode in postcodeList let addressListJsonArray = postcodeAddressJsonObj[postcode].GetArray() let addressList = addressListJsonArray.Select(address => address.GetString()).ToList() select new PostCodeItem(postcode, addressList)).ToList();
+                this.PostCodeLibrary.Add(district, postcodeItemList);
             }          
         }
     }

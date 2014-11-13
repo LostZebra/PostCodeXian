@@ -1,5 +1,4 @@
 ﻿using PostCodeXian.Common;
-using PostCodeXian.Data;
 using System;
 using System.Collections.Generic;
 using Windows.ApplicationModel.Resources;
@@ -7,8 +6,9 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 // For debugging
-
+// using System.Diagnostics;
 // The Pivot Application template is documented at http://go.microsoft.com/fwlink/?LinkID=391641
+using PostCodeXian.DataModel;
 
 namespace PostCodeXian
 {

@@ -1,18 +1,12 @@
-﻿// Self defined
-using PostCodeXian.Data;
-// System
+﻿// System
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 // NET & Data
 using Windows.Data.Json;
-using System.Xml;
 using System.Xml.Linq;
 using System.Net.Http;
 // For debugging
-using System.Diagnostics;
+// using System.Diagnostics;
 // For device location
 using Windows.Devices.Geolocation;
 

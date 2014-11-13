@@ -1,5 +1,4 @@
 ﻿using PostCodeXian.Common;
-using PostCodeXian.Data;
 using System;
 using System.Threading.Tasks;
 using System.IO;
@@ -21,6 +20,7 @@ using System.Net.Http;
 using Windows.Storage;
 
 // The Pivot Application template is documented at http://go.microsoft.com/fwlink/?LinkID=391641
+using PostCodeXian.DataModel;
 
 namespace PostCodeXian
 {
@@ -38,11 +38,13 @@ namespace PostCodeXian
         private readonly NavigationHelper _navigationHelper;
         private readonly ObservableDictionary _defaultViewModel = new ObservableDictionary();
         private readonly ResourceLoader _resourceLoader = ResourceLoader.GetForCurrentView(@"Resources");
-        private StatusBar _statusBar = StatusBar.GetForCurrentView();
+        // StatusBar
+        private readonly StatusBar _statusBar = StatusBar.GetForCurrentView();
 
         private bool _isDownloading;
         private bool _isUpdateChecked;
         private bool _isPinningFinished;
+        private bool _isDeletingFile;
 
         // Black and white brush
         private readonly SolidColorBrush _whiteBrush = new SolidColorBrush(Colors.White);
@@ -117,12 +119,22 @@ namespace PostCodeXian
                 UpdateProgress updateProgress = ChangeProgress;
                 try
                 {
-                    await CommonTaskClient.CheckFile();
                     await CommonTaskClient.Download(updateProgress);
+                    await CommonTaskClient.UpdateFileVersion();
                 }
                 catch (HttpRequestException)
                 {
-                    ShowUpdateStatus("网络连接错误");
+                    ShowUpdateStatus("下载邮编数据失败");
+                    _isDeletingFile = true;
+                }
+                if (_isDeletingFile)
+                {
+                    var folder = ApplicationData.Current.LocalFolder;
+                    var file = await folder.GetFileAsync("DistrictData.json");
+                    await file.DeleteAsync();
+                    var backupFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///DataModel/DistrictDataBackup.json"));
+                    // var backupFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(@"ms-appx:///DataModel/DistrictData.json"));
+                    backupFile.MoveAsync(folder, backupFile.DisplayName, NameCollisionOption.ReplaceExisting);
                 }
             }
             // TODO: Create an appropriate data model for your problem domain to replace the sample data
@@ -276,7 +288,8 @@ namespace PostCodeXian
                 UpdateProgress updateProgress = ChangeProgress;
                 await CommonTaskClient.Download(updateProgress);
 
-                ShowUpdateStatus("下载完成,重启应用完成更改"); 
+                ShowUpdateStatus("下载完成,重启应用完成更改");
+                await CommonTaskClient.UpdateFileVersion();
                 await Task.Delay(1000);  // Simulated task delay
                 _defaultViewModel["UpdateStatus"] = "";
             }
