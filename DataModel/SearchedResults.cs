@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Windows.Data.Json;
 using PostCodeXian.Common;
@@ -8,18 +7,37 @@ namespace PostCodeXian.DataModel
 {
     public class SearchedResultItem
     {
-        public String Address { get; private set; }
+        public string Address { get; private set; }
 
-        public SearchedResultItem(string address)
+        public string Lat { get; private set; }
+
+        public string Lng { get; private set; }
+
+        public SearchedResultItem(string address, string lat, string lng)
         {
+            this.Lat = lat;
+            this.Lng = lng;
             this.Address = address;
+        }
+    }
+
+    public class QueryUnitItem
+    {
+        public string DistrictName { get; private set; }
+
+        public string StreetName { get; private set; }
+
+        public QueryUnitItem(string districtName, string streetName)
+        {
+            this.DistrictName = districtName;
+            this.StreetName = streetName;
         }
     }
 
     public sealed class SearchedResults
     {
-        private static SearchedResults searchedResults;
-        private List<SearchedResultItem> _searcheResultsList;
+        private static SearchedResults _searchedResults;
+        private readonly List<SearchedResultItem> _searcheResultsList;
 
         public SearchedResults()
         {
@@ -33,11 +51,11 @@ namespace PostCodeXian.DataModel
 
         public static SearchedResults GetInstance()
         {
-            if (searchedResults == null)
+            if (_searchedResults == null)
             {
-                searchedResults = new SearchedResults();
+                _searchedResults = new SearchedResults();
             }
-            return searchedResults;
+            return _searchedResults;
         }
 
         public Task<SearchedResults> GetSearchedResults(string keyword)
@@ -47,22 +65,23 @@ namespace PostCodeXian.DataModel
 
         private async Task<SearchedResults> FetchAddressData(string keyword)
         {
-            MapClient gMapClient = MapClient.getInstance();
+            this._searcheResultsList.Clear();
+            MapClient gMapClient = MapClient.GetInstance();
             var resultsList = await gMapClient.AutoCompleteResults(keyword);
-            if (resultsList != null)
+            if (resultsList == null || resultsList.Count == 0) return this;
+            int count = 0; // Only ask for 5 items
+            foreach(var resultItem in resultsList)
             {
-                this._searcheResultsList.Clear();
-                int count = 0; // Only ask for 5 items
-                foreach(JsonValue resultItem in resultsList)
+                if (count == 5)
                 {
-                    if (count == 5)
-                    {
-                        break;
-                    }
-                    JsonObject resultItemObj = resultItem.GetObject();
-                    this._searcheResultsList.Add(new SearchedResultItem(resultItemObj["name"].GetString()));
-                    count++;
+                    break;
                 }
+                JsonObject resultItemObj = resultItem.GetObject();
+                
+                this._searcheResultsList.Add(new SearchedResultItem(resultItemObj["name"].GetString(), 
+                                             resultItemObj["location"].GetObject()["lat"].GetNumber().ToString(),
+                                             resultItemObj["location"].GetObject()["lng"].GetNumber().ToString()));
+                count++;
             }
             return this;
         }

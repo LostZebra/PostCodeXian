@@ -251,11 +251,8 @@ namespace PostCodeXian
             }
             else
             {
-                string street = await GettingStreet();
-                if (street != null)
-                {
-                    await GettingPostCode(FirstPivotItem, street);
-                }
+                QueryUnitItem pinnedUnitItem = await GettingStreet();
+                await GettingPostCode(FirstPivotItem, pinnedUnitItem);
             }
         }
 
@@ -265,10 +262,10 @@ namespace PostCodeXian
             if (commandResult.Label.Equals("允许") || commandResult.Label.Equals("给予权限"))
             {
                 ApplicationData.Current.LocalSettings.Values["AccessGeo"] = true;
-                string street = await GettingStreet();
-                if (street != null)
+                QueryUnitItem pinnedUnitItem = await GettingStreet();
+                if (pinnedUnitItem != null)
                 {
-                    await GettingPostCode(FirstPivotItem, street);
+                    await GettingPostCode(FirstPivotItem, pinnedUnitItem);
                 }
             }
             else if (commandResult.Label.Equals("不允许"))
@@ -330,15 +327,14 @@ namespace PostCodeXian
             this.PinningStatus.Text = "定位中....";
         }
 
-        private async Task<string> GettingStreet()
+        private async Task<QueryUnitItem> GettingStreet()
         {
-            string street = null;
+            QueryUnitItem pinnedUnitItem = null;
             BeforeGettingStreet();
             bool webRequestSucceed = true;
             try
             {
-                MapClient locateStreet = MapClient.getInstance();
-                street = await locateStreet.GetCurrentStreet();
+                pinnedUnitItem = await MapClient.GetInstance().GetCurrentStreet();
             }
             catch (HttpRequestException)
             {
@@ -349,10 +345,10 @@ namespace PostCodeXian
                 webRequestSucceed = false;
             }
             GettingStreetFinished(true, webRequestSucceed);
-            return street;
+            return pinnedUnitItem;
         }
 
-        private async Task GettingPostCode(int pivotItemIndex, string streetAddress)
+        private async Task GettingPostCode(int pivotItemIndex, QueryUnitItem queryUnitItem)
         {
             bool webRequestFailed = false;
             try
@@ -362,13 +358,13 @@ namespace PostCodeXian
                     case 1:
                     {
                         string result;
-                        if (streetAddress == null)
+                        if (queryUnitItem == null)
                         {
                             result = "没有找到匹配的邮政编码";
                         }
                         else
                         {
-                            string postCode = await MapClient.getInstance().QueryPostCodeResult(streetAddress);
+                            string postCode = await MapClient.GetInstance().QueryPostCodeResult(queryUnitItem.DistrictName, queryUnitItem.StreetName);
                             if (postCode != null)
                             {
                                 result = "您查询的邮政编码是:\n" + postCode;
@@ -387,7 +383,7 @@ namespace PostCodeXian
                     }
                     case 2:
                     {
-                        string postCode = await MapClient.getInstance().QueryPostCodeResult(streetAddress);
+                        string postCode = await MapClient.GetInstance().QueryPostCodeResult(queryUnitItem.DistrictName, queryUnitItem.StreetName);
                         if (postCode != null)
                         {
                             this.PostCodeDisplay.Text = "您查询的邮政编码是:\n" + postCode;
@@ -549,19 +545,20 @@ namespace PostCodeXian
             var clickedItem = e.ClickedItem as SearchedResultItem;
             if (clickedItem != null)
             {
-                string streetAddress = clickedItem.Address;
                 this.DefaultViewModel[SearchedResultsName] = null;  // Disable search result list
-                await GettingPostCode(SecondPivotItem, streetAddress);
+                QueryUnitItem queryUnitItem =
+                    await MapClient.GetInstance().GetQueryUnitItem(clickedItem);
+                await GettingPostCode(SecondPivotItem, queryUnitItem);
             }
         }
 
         // Relocate user's current location
         private async void RetryPin_Click(object sender, RoutedEventArgs e)
         {
-            string street = await GettingStreet();
-            if (street != null)
+            QueryUnitItem pinnedUnitItem = await GettingStreet();
+            if (pinnedUnitItem != null)
             {
-                await GettingPostCode(FirstPivotItem, street);
+                await GettingPostCode(FirstPivotItem, pinnedUnitItem);
             }   
         }
 

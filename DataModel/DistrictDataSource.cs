@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Windows.Data.Json;
 using Windows.Storage;
 // For debugging
-// using System.Diagnostics;
+using System.Diagnostics;
 
 namespace PostCodeXian.DataModel
 {
@@ -47,11 +47,7 @@ namespace PostCodeXian.DataModel
 
         public static DistrictDataSource GetInstance()
         {
-            if (DataSource == null)
-            {
-                DataSource = new DistrictDataSource();
-            }
-            return DataSource;
+            return DataSource ?? (DataSource = new DistrictDataSource());
         }
 
         public async Task GetDistrictData()
@@ -76,6 +72,17 @@ namespace PostCodeXian.DataModel
                 List<PostCodeItem> postcodeItemList = (from postcode in postcodeList let addressListJsonArray = postcodeAddressJsonObj[postcode].GetArray() let addressList = addressListJsonArray.Select(address => address.GetString()).ToList() select new PostCodeItem(postcode, addressList)).ToList();
                 this.PostCodeLibrary.Add(district, postcodeItemList);
             }          
+        }
+
+        public string QueryPostCode(string districtName, string streetName)
+        {
+            var matchedPostcodeList = this.PostCodeLibrary.Where(districtItem => districtItem.Key.DistrictName == districtName)
+                .Select(districtItem => districtItem.Value).First();
+            var matchedAddressList = from postcodeItem in matchedPostcodeList
+                                 from address in postcodeItem.StreetList
+                                 where address.Contains(streetName)
+                                 select new {Postcode = postcodeItem.PostCode, Address = address};
+            return matchedAddressList.Select(matchedAddress => matchedAddress.Postcode).FirstOrDefault();
         }
     }
 }
