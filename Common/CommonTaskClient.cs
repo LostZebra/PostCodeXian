@@ -30,7 +30,7 @@ namespace PostCodeXian.Common
             // Replace existed file
             const string fileName = "DistrictData.json";
             var newLibraryFile = await ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
-            Uri downloadUri = new Uri("http://localhost:62874/MainService.svc/DownloadNewLibrary");
+            Uri downloadUri = new Uri("http://postcodexian.cloudapp.net//MainService.svc/DownloadNewLibrary");
             using (HttpClient downloadClient = new HttpClient())
             {
                 HttpResponseMessage responseMessage = await downloadClient.GetAsync(downloadUri);
@@ -58,7 +58,7 @@ namespace PostCodeXian.Common
 
         public static async Task UpdateFileVersion()
         {
-            Uri clientUri = new Uri("http://localhost:62874/MainService.svc/FileDescription");
+            Uri clientUri = new Uri("http://postcodexian.cloudapp.net/MainService.svc/FileDescription");
             using (HttpClient client = new HttpClient())
             {
                 HttpResponseMessage responseMessage = await client.GetAsync(clientUri);
@@ -75,7 +75,7 @@ namespace PostCodeXian.Common
 
         public static async Task<bool> IsUpdateAvailable()
         {
-            Uri clientUri = new Uri("http://localhost:62874/MainService.svc/FileDescription");
+            Uri clientUri = new Uri("http://postcodexian.cloudapp.net/MainService.svc/FileDescription");
             using (HttpClient client = new HttpClient())
             {
                 HttpResponseMessage responseMessage = await client.GetAsync(clientUri);

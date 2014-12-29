@@ -51,11 +51,7 @@ namespace PostCodeXian.DataModel
 
         public static SearchedResults GetInstance()
         {
-            if (_searchedResults == null)
-            {
-                _searchedResults = new SearchedResults();
-            }
-            return _searchedResults;
+            return _searchedResults ?? (_searchedResults = new SearchedResults());
         }
 
         public Task<SearchedResults> GetSearchedResults(string keyword)

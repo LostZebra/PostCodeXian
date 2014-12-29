@@ -57,8 +57,8 @@ namespace PostCodeXian.DataModel
                 return;
             }
             StorageFolder folder = ApplicationData.Current.LocalFolder;
-            var file = await folder.GetFileAsync("DistrictDataBackup.json");
-            // var file = await folder.GetFileAsync("DistrictData.json");
+            // var file = await folder.GetFileAsync("DistrictDataBackup.json");
+            var file = await folder.GetFileAsync("DistrictData.json");
             string districtJsonText = await FileIO.ReadTextAsync(file);
             JsonObject districtJsonObject = JsonObject.Parse(districtJsonText);
             // New DistrictData object
